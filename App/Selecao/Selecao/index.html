@@ -529,8 +529,8 @@
                   </tbody>
                 </table>
               </div>
-              <!-- <button class="btn btn-secondary" type="button" id="" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true"></button> -->
-              
+              <br>
+              <p>Please click on the below button to measure distance using realtime AR</p>
             </div>
             <div class="col-lg-3 cta-btn-container text-center">
               <!-- <class="cta-btn align-middle" onclick="init()">Start Recording</a> -->
@@ -543,23 +543,6 @@
             </div>
            
         </div>
-        
-          <p id="label-container"></p>
-         
-         
-        
-
-        <div class="col-lg-12 cta-btn-container text-center">
-          <p id="label-container"></p>
-          <div class="section-title" data-aos="zoom-out">
-            <p id="labelGoodPose"></p>
-          <p id="labelBadPose"></p>
-           
-          </div>
-          
-
-        </div>
-
 
 
       </div>
@@ -584,6 +567,10 @@
         function copy(x) {
           return JSON.parse(JSON.stringify(x));
         }
+        
+        function convertToInches(distance){
+          return Math.round(((distance * 39.3701) + Number.EPSILON) * 100) / 100;
+        }
   
         function xrinit() {
           renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -597,6 +584,17 @@
             // domOverlay: { root: document.getElementById('arOverlay') }
           });
           document.getElementById("ARWorkplace").appendChild(arbutton);
+          document.getElementById("ARWorkplace").appendChild(document.createElement('br'));
+          document.getElementById("ARWorkplace").appendChild(document.createElement('br'));
+          const label = document.createElement( 'label' );
+          label.id = 'distanceMeasure';
+          label.classList.add('label');
+          label.classList.add('label-default');
+          label.classList.add('text-secondary');
+          label.innerHTML = "Distance from AR will be displayed here";
+          // alert(distance);
+          label.placeholder = "Distance from AR"
+          document.getElementById("ARWorkplace").appendChild(label);
           
           // arbutton2 = ARButton.createButton(renderer, {
           //   requiredFeatures: ["hit-test"]
@@ -636,7 +634,10 @@
                 let dy = first.y - second.y;
                 let dz = first.z - second.z;
                 let distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                document.getElementById(document.getElementById("distanceMeasure").value).value = distance;
+                label.classList.remove("text-secondary");
+                label.classList.add('text-white');
+                distance = convertToInches(distance);
+                label.innerHTML = distance + "\'\'";
                 flag = true;
                 // document.getElementById("distance").innerHTML = distance + "here";
               } else {
