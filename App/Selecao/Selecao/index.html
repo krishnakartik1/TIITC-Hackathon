@@ -622,23 +622,26 @@
             20
           );
   
-          const geometry = new THREE.SphereGeometry(0.05, 32, 32);
+          const geometry = new THREE.SphereGeometry(0.04, 32, 32);
   
           let count = 0;
           let first = "";
           let second = "";
-  
+          let mesh1,mesh2;
           function onSelect() {
             let flag = false;
   
             if (reticle.visible) {
-              const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
-              const mesh = new THREE.Mesh(geometry, material);
-              mesh.position.setFromMatrixPosition(reticle.matrix);
+              // const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
+              // const mesh = new THREE.Mesh(geometry, material);
+              // mesh.position.setFromMatrixPosition(reticle.matrix);
               // mesh.scale.y = Math.random() * 2 + 1;
   
               if (count == 1) {
-                second = copy(mesh.position);
+                const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                mesh2 = new THREE.Mesh(geometry, material);
+                mesh2.position.setFromMatrixPosition(reticle.matrix);
+                second = copy(mesh2.position);
                 // alert("second" + second.x + "," + second.y + "," +second.z )
                 // document.write((first.x - second.x))
                 let dx = first.x - second.x;
@@ -650,15 +653,23 @@
                 distance = convertToInches(distance);
                 label.innerHTML = distance + "\'\'";
                 flag = true;
+                scene.add(mesh2);
                 // document.getElementById("distance").innerHTML = distance + "here";
               } else {
-                first = copy(mesh.position);
+                const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+                mesh1 = new THREE.Mesh(geometry, material);
+                mesh1.position.setFromMatrixPosition(reticle.matrix);
+                first = copy(mesh1.position);
                 count = 1;
+                scene.add(mesh1);
                 // alert(first.x)
                 // document.write(typeof first.x)
               }
-              scene.add(mesh);
+              // scene.add(mesh);
               if (flag == true) {
+                count=0;
+                scene.remove(mesh1);
+                scene.remove(mesh2);
                 endXRSession();
               }
             }
