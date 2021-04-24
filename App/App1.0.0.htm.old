@@ -1,0 +1,332 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+    <div>Teachable Machine Pose Model</div>
+<button type="button" onclick="init()">Start</button>
+<div id="messages">
+    <p id="notify">Its Time to Take Break for 20 seconds</p>
+    <div id="exercise"><p>Show Extercise</p> <button onclick="closeExercise()" >Close </button> </div>
+</div>
+<table width="100%">
+    <tr>
+        <td>
+            <div><canvas id="canvas"></canvas></div>
+            <div id="label-container"></div>
+            <div id="labelGoodPose"></div>
+            <div id="labelBadPose"></div>
+        </td>
+        <td>
+            <div style="border:1px solid black; height: 300px; width: 300px;float: right;">
+                <canvas id="myChart"></canvas>
+              </div>
+        </td>
+    </tr>
+</table>
+
+<div >
+
+<div><hr> Recent Bad Poses</div>
+<div style="float:left"><canvas id="badPose1"></canvas></div>
+<div style="float:left"><canvas id="badPose2"></canvas></div>
+<div style="float:left"><canvas id="badPose3"></canvas></div>
+<div style="float:left"><canvas id="badPose4"></canvas></div>
+<div style="float:left"><canvas id="badPose5"></canvas></div>
+</div>
+<div>
+    show
+    <canvas id="badPostureChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="text/javascript">
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/pose
+
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "./my-pose-model/";
+    let model, webcam, ctx, labelContainer, maxPredictions;
+    let ctxBadPose1,ctxBadPose2,ctxBadPose3,ctxBadPose4,ctxBadPose5;
+    let imageIndex=0;
+    let goodPosture=0;
+
+
+    /*
+    Char Configurations
+    */
+
+        const data = {
+    labels: [
+        'Bad Posture',
+        'Good Posture',
+    ],
+    datasets: [{
+        label: 'My First Dataset',
+        data: [0,0],
+        backgroundColor: [
+        'rgb(255, 99, 132)',
+        'rgb(54, 162, 235)'
+        ],
+        hoverOffset: 4
+    }]
+    };
+    const config = {
+  type: 'doughnut',
+  data: data,
+};
+
+
+var myChart = new Chart(
+    document.getElementById('myChart'),
+    config
+  );
+
+  const scatterChartData = {
+  datasets: [{
+    label: 'Bad Posture',
+    data: [{
+      x: new Date().getMinutes(),
+      y: 5
+    }
+    ],
+    backgroundColor: 'rgb(255, 99, 132)'
+  }],
+};
+
+
+
+  const scatterChartConfig = {
+  type: 'scatter',
+  data: scatterChartData,
+  options: {
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom'
+      }
+    }
+  }
+};
+
+var badPostureChart = new Chart(
+    document.getElementById('badPostureChart'),
+    scatterChartConfig
+  );
+  /*
+  chart configuration ends here
+  */
+
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // Note: the pose library adds a tmPose object to your window (window.tmPose)
+        model = await tmPose.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Convenience function to setup a webcam
+        const size = 200;
+        const flip = true; // whether to flip the webcam
+        webcam = new tmPose.Webcam(size, size, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // append/get elements to the DOM
+        const canvas = document.getElementById("canvas");
+        canvas.width = size; canvas.height = size;
+        ctx = canvas.getContext("2d");
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
+        }
+
+        //Setting up space for bad poses
+        const canvasBadPose1 = document.getElementById("badPose1");
+        canvasBadPose1.width = size; canvasBadPose1.height = size;
+
+        const canvasBadPose2 = document.getElementById("badPose2");
+        canvasBadPose2.width = size; canvasBadPose2.height = size;
+
+        const canvasBadPose3 = document.getElementById("badPose3");
+        canvasBadPose3.width = size; canvasBadPose3.height = size;
+
+        const canvasBadPose4 = document.getElementById("badPose4");
+        canvasBadPose4.width = size; canvasBadPose4.height = size;
+
+        const canvasBadPose5 = document.getElementById("badPose5");
+        canvasBadPose5.width = size; canvasBadPose5.height = size;
+
+        ctxBadPose1 = canvasBadPose1.getContext("2d");
+        ctxBadPose2 = canvasBadPose2.getContext("2d");
+        ctxBadPose3 = canvasBadPose3.getContext("2d");
+        ctxBadPose4 = canvasBadPose4.getContext("2d");
+        ctxBadPose5 = canvasBadPose5.getContext("2d");
+    }
+
+    async function loop(timestamp) {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        // Prediction #1: run input through posenet
+        // estimatePose can take in an image, video or canvas html element
+        const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+        // Prediction 2: run input through teachable machine classification model
+        const prediction = await model.predict(posenetOutput);
+        let d=new Date().getMilliseconds();
+        
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+            if(prediction[i].className=="Class 1")
+            {
+                goodPosture=goodPosture+Number(prediction[i].probability.toFixed(2));
+                //console.log("adding: "+goodPosture);
+            }
+                
+                else
+                    goodPosture=goodPosture-prediction[i].probability.toFixed(2);
+    
+           if (d<new Date().getSeconds())
+           {
+               console.log(goodPosture)
+               if (goodPosture<0)
+               {
+                //    console.log("Bad Posture");
+                goodPosture<-20?drawBadPoses(pose,imageIndex):null;
+                    drawBadPoses(pose,imageIndex);
+                    imageIndex=imageIndex+1;
+                    imageIndex=imageIndex%5;
+                   document.getElementById("labelGoodPose").innerHTML="Bad Posture";
+                   data.datasets[0].data[0]=data.datasets[0].data[0]+1;
+                   
+                   
+               }
+               else
+               {
+                // console.log("Good Posture");
+                drawBadPoses(pose,10);
+                document.getElementById("labelGoodPose").innerHTML="Good Posture";
+                data.datasets[0].data[1]=data.datasets[0].data[1]+1;
+                scatterChartData.datasets[0].data.push({x: new Date().getMinutes(),y:goodPosture})
+               }
+               d=new Date().getSeconds();
+               
+               goodPosture=0;
+               
+               myChart.update();
+               badPostureChart.update();
+           }
+
+            
+            
+        }
+
+        // finally draw the poses
+        drawPose(pose);
+    }
+
+    function drawPose(pose) {
+        if (webcam.canvas) {
+            ctx.drawImage(webcam.canvas, 0, 0);
+            // draw the keypoints and skeleton
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+            }
+        }
+    }
+
+    function drawBadPose(pose) {
+        if (webcam.canvas) {
+            ctxBadPose1.drawImage(webcam.canvas, 0, 0);
+            // draw the keypoints and skeleton
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctxBadPose1);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctxBadPose1);
+            }
+        }
+    }
+
+    function drawBadPoses(pose,imageIndex) {
+        let ctx;
+        switch(imageIndex)
+        {
+            case 0:ctx=ctxBadPose1;break;
+            case 1:ctx=ctxBadPose2;break;
+            case 2:ctx=ctxBadPose3;break;
+            case 3:ctx=ctxBadPose4;break;
+            case 4:ctx=ctxBadPose5;break;
+        }
+        //let ctx=ctxBadPose2;
+        if (webcam.canvas && imageIndex<10) {
+            ctx.drawImage(webcam.canvas, 0, 0);
+            // draw the keypoints and skeleton
+            if (pose) {
+                const minPartConfidence = 0.5;
+                tmPose.drawKeypoints(pose.keypoints, minPartConfidence, ctx);
+                tmPose.drawSkeleton(pose.keypoints, minPartConfidence, ctx);
+            }
+        }
+        else
+        {
+            
+        }
+    }
+
+
+    /*
+    Performing 20-20-20 Rule
+    */
+
+    let breakCount=0;
+    const interval=setInterval(breakMethod,50000);
+    function breakMethod()
+    {
+        //alert("Take break");
+        var notify=document.getElementById("notify")
+        notify.style.display="block";
+        console.log("starting break");
+        breakCount=breakCount+1;
+        if (breakCount>3)
+        {
+            breakCount=0;
+            var exercise=document.getElementById("exercise");
+            exercise.style.display="block";
+        }
+
+        startBreak();
+        
+    }
+
+    function startBreak()
+    {
+        setTimeout(function(){
+            var notify=document.getElementById("notify")
+        notify.style.display="none";
+        },2000)
+    }
+
+    function closeExercise()
+    {
+        var exercise=document.getElementById("exercise");
+            exercise.style.display="none";
+    }
+
+
+</script>
+
+    </body>
+</html>
