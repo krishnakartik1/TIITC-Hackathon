@@ -133,7 +133,7 @@
 
 			disableButton();
 
-			button.textContent = 'AR NOT SUPPORTED';
+			button.textContent = 'PLEASE USE MOBILE DEVICE FOR AR';
 
 		}
 
